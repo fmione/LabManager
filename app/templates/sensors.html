@@ -12,51 +12,60 @@
 </div>
 
 {% if sensores %}
-<div class="row g-3">
-  {% for s in sensores %}
-  <div class="col-md-6 col-xl-4">
-    <div class="card stat-card h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div>
-            <a href="/sensores/{{ s.id }}" class="text-decoration-none">
-              <span class="fs-6 fw-semibold">{{ s.name }}{% if s.unit %} ({{ s.unit|usym }}){% endif %}</span>
-            </a>
-            <div class="small text-muted">
-              <code>{{ s.mqtt_topic }}</code>
-            </div>
-          </div>
-          {% if user and user.role != 'lector' %}
-          <form method="post" action="/sensores/{{ s.id }}/eliminar"
-                data-confirm="¿Eliminar el sensor «{{ s.name }}» y sus datos?">
-            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-          </form>
-          {% endif %}
-        </div>
-        {% if s.description %}<p class="small text-muted">{{ s.description }}</p>{% endif %}
-        <div class="mb-2">
-          <span class="badge {% if s.is_active %}bg-success{% else %}bg-secondary{% endif %} me-1">
-            {% if s.is_active %}Activo{% else %}Inactivo{% endif %}
-          </span>
-          {% if s.min_value is not none or s.max_value is not none %}
-          <span class="badge bg-light text-dark border me-1">
-            Rango: {{ s.min_value if s.min_value is not none else '∞' }} – {{ s.max_value if s.max_value is not none else '∞' }}
-          </span>
-          {% endif %}
-        </div>
-        <div class="small text-muted">
-          Última medición:
-          {% if s.last_value is not none %}
-          <strong>{{ s.last_value }}</strong>{% if s.unit %} {{ s.unit|usym }}{% endif %}
-          <span class="text-muted">{{ s.last_time|dth if s.last_time else '' }}</span>
-          {% else %}
-          — sin datos
-          {% endif %}
-        </div>
-      </div>
+<div class="card stat-card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 table-stack" data-dt>
+        <thead class="table-light">
+          <tr>
+            <th>Sensor</th>
+            <th>Topic MQTT</th>
+            <th>Estado</th>
+            <th>Última medición</th>
+            {% if user and user.role != 'lector' %}<th class="no-sort"></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sensores %}
+          <tr>
+            <td class="fw-semibold" data-label="Sensor">
+              <a href="/sensores/{{ s.id }}" class="text-decoration-none">{{ s.name }}{% if s.unit %} ({{ s.unit|usym }}){% endif %}</a>
+            </td>
+            <td data-label="Topic MQTT"><code>{{ s.mqtt_topic }}</code></td>
+            <td data-label="Estado">
+              <div class="d-flex flex-column flex-md-row align-items-end align-items-md-center gap-1">
+                <span class="badge {% if s.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                  {% if s.is_active %}Activo{% else %}Inactivo{% endif %}
+                </span>
+                {% if s.min_value is not none or s.max_value is not none %}
+                <span class="badge bg-light text-dark border">Rango: {{ s.min_value if s.min_value is not none else '∞' }} – {{ s.max_value if s.max_value is not none else '∞' }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td data-label="Última medición">
+              {% if s.last_value is not none %}
+              <span class="medicion">
+                <strong>{{ s.last_value }}</strong>{% if s.unit %} {{ s.unit|usym }}{% endif %}
+                <span class="text-muted small d-block">{{ s.last_time|dth if s.last_time else '' }}</span>
+              </span>
+              {% else %}
+              <span class="text-muted">— sin datos</span>
+              {% endif %}
+            </td>
+            {% if user and user.role != 'lector' %}
+            <td class="text-end actions-cell">
+              <form method="post" action="/sensores/{{ s.id }}/eliminar"
+                    data-confirm="¿Eliminar el sensor «{{ s.name }}» y sus datos?">
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
-  {% endfor %}
 </div>
 {% else %}
 <div class="text-center text-muted p-4">

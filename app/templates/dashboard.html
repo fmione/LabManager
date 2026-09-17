@@ -60,7 +60,12 @@
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <span><i class="bi bi-graph-up me-2"></i>Últimas 24 horas</span>
         <div class="d-flex gap-2 align-items-center">
-          <select id="dashSensor" class="form-select form-select-sm">
+          <label class="form-label small text-muted mb-0 d-none d-sm-block">Vista:</label>
+          <select id="dashView" class="form-select form-select-sm" style="width:auto" data-chartview onchange="chartViewChanged(this)">
+            <option value="line" selected>Línea</option>
+            <option value="points">Puntos</option>
+          </select>
+          <select id="dashSensor" class="form-select form-select-sm" style="width:auto">
             {% for s in sensor_options %}
             <option value="{{ s.id }}">{{ s.label }}</option>
             {% endfor %}
@@ -111,12 +116,11 @@
   <div class="card-body p-0">
     {% if latest %}
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0 table-stack">
+      <table class="table table-hover align-middle mb-0 table-stack" data-dt>
         <thead class="table-light">
           <tr>
             <th>Sensor</th>
             <th class="text-end">Valor</th>
-            <th>Unidad</th>
             <th>Hora</th>
           </tr>
         </thead>
@@ -130,10 +134,9 @@
               {% if r.data_type == 'bool' %}
                 {% if r.value == 1.0 %}<span class="badge bg-success">Sí</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}
               {% else %}
-                {{ r.value }}
+                {{ r.value }}{% if r.unit %} {{ r.unit }}{% endif %}
               {% endif %}
             </td>
-            <td data-label="Unidad">{{ r.unit or '-' }}</td>
             <td class="text-muted small" data-label="Hora">{{ r.time|dth }}</td>
           </tr>
           {% endfor %}
@@ -152,6 +155,8 @@
 
 {% block scripts %}
 <script src="/static/js/chart.umd.min.js"></script>
+<script src="/static/js/hammer.min.js"></script>
+<script src="/static/js/chartjs-plugin-zoom.min.js"></script>
 <script>
 function loadDashboardChart() {
   const sel = document.getElementById("dashSensor");

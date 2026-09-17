@@ -255,4 +255,37 @@ body {
   }
 }
 
+@media (min-width: 768px) {
+  table.table-stack.dataTable tbody > tr:nth-child(odd) > td {
+    background-color: #f7f7f7;
+  }
+}
+
+.dt-paging .page-link {
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.dt-paging .page-item.active .page-link {
+  color: #6f6f6f;
+  background-color: #cdcdcd;
+  border-color: #ebebeb;
+}
+
+.dt-paging .page-item.disabled .page-link {
+  color: #adb5bd;
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+}
+
+table {
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+table.lm-shown {
+  opacity: 1;
+}
+
 

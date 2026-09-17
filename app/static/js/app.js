@@ -13,6 +13,20 @@ function closeSidebar() {
   document.getElementById("sidebarBackdrop").classList.remove("show");
 }
 
+window.__lmLineMode = window.__lmLineMode !== undefined ? window.__lmLineMode : true;
+
+function chartViewChanged(sel) {
+  const points = sel.value === "points";
+  window.__lmLineMode = !points;
+  Object.values(window.__lmSeries || {}).forEach(en => {
+    const ds = en.dataset;
+    ds.showLine = !points;
+    ds.tension = points ? 0 : 0.2;
+    ds.pointRadius = points ? 2 : 1;
+  });
+  if (window.__lmChart) window.__lmChart.update();
+}
+
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 const MAX_IMAGES_PER_NOTE = 3;
 const ALLOWED_IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
@@ -224,6 +238,9 @@ function bindModalReset() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+  setTimeout(() => {
+    document.querySelectorAll("table").forEach(t => t.classList.add("lm-shown"));
+  }, 250);
   const toggle = document.getElementById("sidebarToggle");
   const backdrop = document.getElementById("sidebarBackdrop");
   if (toggle) toggle.addEventListener("click", openSidebar);
@@ -315,6 +332,13 @@ function buildAlertRangeDatasets(series, opts) {
 function buildLineChart(canvasId, series, emptyId, opts = {}) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
+  document.querySelectorAll("[data-chartview]").forEach(sel => {
+    sel.value = window.__lmLineMode === false ? "points" : "line";
+  });
+  canvas.ondblclick = () => {
+    const c = window.__lmChart;
+    if (c) c.resetZoom();
+  };
   const empty = document.getElementById(emptyId);
   window.__lmSeries = {};
   window.__lmRangeDatasets = null;
@@ -325,15 +349,17 @@ function buildLineChart(canvasId, series, emptyId, opts = {}) {
   }
   if (empty) empty.classList.add("d-none");
   const datasets = series.map((s, i) => {
+    const asPoints = window.__lmLineMode === false;
     const dataset = {
       label: s.label,
       data: s.points.map(p => ({ x: p[0], y: p[1] })),
       borderColor: CHART_COLORS[i % CHART_COLORS.length],
       backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + "22",
       borderWidth: 2,
-      pointRadius: 1,
+      pointRadius: asPoints ? 2 : 1,
       pointHoverRadius: 4,
-      tension: 0.2,
+      tension: asPoints ? 0 : 0.2,
+      showLine: !asPoints,
     };
     window.__lmSeries[s.sensor_id] = {
       label: s.label,
@@ -377,6 +403,21 @@ timeZone: window.LM_TZ || "Etc/GMT+3",
           callbacks: {
             title: items => items.length ? fmtTime(items[0].parsed.x) : "",
             label: item => ` ${item.dataset.label}: ${item.parsed.y}`,
+          },
+        },
+        zoom: {
+          pan: { enabled: true, mode: "x", modifierKey: "shift" },
+          zoom: {
+            wheel: { enabled: true, mode: "x", speed: 0.15 },
+            drag: {
+              enabled: true,
+              mode: "x",
+              backgroundColor: "rgba(14, 165, 233, 0.12)",
+              borderColor: "#0ea5e9",
+              borderWidth: 1,
+            },
+            pinch: { enabled: true },
+            mode: "x",
           },
         },
       },

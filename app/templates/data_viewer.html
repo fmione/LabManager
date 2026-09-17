@@ -35,6 +35,13 @@
 
 <div class="card stat-card mb-3">
   <div class="card-body">
+    <div class="d-flex justify-content-end align-items-center gap-2 mb-2">
+      <label class="form-label small text-muted mb-0">Vista:</label>
+      <select id="dataView" class="form-select form-select-sm" style="width:auto" data-chartview onchange="chartViewChanged(this)">
+        <option value="line" selected>Línea</option>
+        <option value="points">Puntos</option>
+      </select>
+    </div>
     <div class="chart-box">
       <canvas id="dataChart"></canvas>
     </div>
@@ -131,6 +138,8 @@
 
 {% block scripts %}
 <script src="/static/js/chart.umd.min.js"></script>
+<script src="/static/js/hammer.min.js"></script>
+<script src="/static/js/chartjs-plugin-zoom.min.js"></script>
 <script>
 let meta = { experiments: [] };
 let ws = null;
@@ -181,7 +190,7 @@ function selectedSensorIds() {
     const e = meta.experiments.find(x => String(x.id) === exp);
     return new Set(e ? e.sensors.map(s => String(s.id)) : []);
   }
-  return new Set(meta.experiments.flatMap(e => e.sensors.map(s => String(s.id))));
+  return new Set((allSensors()).map(s => String(s.id)));
 }
 
 function registrySeries() {
@@ -262,17 +271,11 @@ function populateFilters() {
     o.textContent = e.name;
     expSel.appendChild(o);
   });
-  populateSensorSelect(allExperimentSensors());
+  populateSensorSelect(allSensors());
 }
 
-function allExperimentSensors() {
-  const unique = new Map();
-  meta.experiments.forEach(e => {
-    e.sensors.forEach(s => {
-      if (!unique.has(s.id)) unique.set(s.id, s);
-    });
-  });
-  return Array.from(unique.values());
+function allSensors() {
+  return meta.sensors || [];
 }
 
 function populateSensorSelect(sensors) {
@@ -291,8 +294,8 @@ function onExperimentChange() {
   const e = meta.experiments.find(x => String(x.id) === expSel.value);
   if (e) {
     populateSensorSelect(e.sensors);
-  } else {
-    populateSensorSelect(allExperimentSensors());
+} else {
+    populateSensorSelect(allSensors());
   }
   clearView();
   loadData();
@@ -391,7 +394,7 @@ function onExportExperimentChange() {
   if (e) {
     fillExportSensors(e.sensors);
   } else {
-    fillExportSensors(allExperimentSensors());
+    fillExportSensors(allSensors());
   }
 }
 

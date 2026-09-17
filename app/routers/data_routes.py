@@ -133,9 +133,10 @@ def api_data(
 def api_meta(request: Request, db: Session = Depends(get_db)):
     require_roles(request, {"admin", "investigador", "lector"})
     experiments = db.query(models.Experiment).order_by(models.Experiment.name).all()
+    all_sensors = db.query(models.Sensor).order_by(models.Sensor.name).all()
     data = []
     for e in experiments:
-        sensors = [
+        exp_sensors = [
             {
                 "id": s.id,
                 "name": s.name,
@@ -149,9 +150,18 @@ def api_meta(request: Request, db: Session = Depends(get_db)):
             "name": e.name,
             "start": int(e.start_time.timestamp() * 1000) if e.start_time else None,
             "end": int(e.end_time.timestamp() * 1000) if e.end_time else None,
-            "sensors": sensors,
+            "sensors": exp_sensors,
         })
-    return {"experiments": data}
+    sensors = [
+        {
+            "id": s.id,
+            "name": s.name,
+            "unit": s.unit.symbol or s.unit.name if s.unit else "",
+            "type": s.data_type,
+        }
+        for s in all_sensors
+    ]
+    return {"experiments": data, "sensors": sensors}
 
 
 @router.get("/api/data/csv")

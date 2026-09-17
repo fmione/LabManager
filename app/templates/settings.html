@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Configuración - LabManager{% endblock %}
+
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-gear me-2"></i>Configuración</h4>
+
+<form method="post" action="/configuracion">
+  <div class="card stat-card mb-4">
+    <div class="card-header"><i class="bi bi-clock-history me-2"></i>Zona horaria</div>
+    <div class="card-body">
+      <p class="text-muted small mb-3">Seleccioná la zona horaria para mostrar y convertir las fechas. Todos los almacenamientos en la DB se mantienen en UTC.</p>
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label for="timezone" class="form-label">Zona horaria</label>
+          <select name="timezone" id="timezone" class="form-select">
+            {% for label, value in tz_choices %}
+            <option value="{{ value }}" {{ 'selected' if value == current_tz }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card stat-card mb-4">
+    <div class="card-header"><i class="bi bi-broadcast me-2"></i>Broker MQTT</div>
+    <div class="card-body">
+      <p class="text-muted small mb-3">Dirección del broker MQTT desde donde se reciben las lecturas de sensores.</p>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="mqtt_host" class="form-label">Host / IP</label>
+          <input type="text" name="mqtt_host" id="mqtt_host" class="form-control"
+                 value="{{ mqtt_host }}" placeholder="localhost">
+        </div>
+        <div class="col-md-3">
+          <label for="mqtt_port" class="form-label">Puerto</label>
+          <input type="number" name="mqtt_port" id="mqtt_port" class="form-control"
+                 value="{{ mqtt_port }}" min="1" max="65535">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-end">
+    <button type="submit" class="btn btn-primary px-4">
+      <i class="bi bi-check-lg me-1"></i>Guardar cambios
+    </button>
+  </div>
+</form>
+{% endblock %}

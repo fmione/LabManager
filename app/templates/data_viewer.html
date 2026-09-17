@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+{% block title %}Datos y gráficos - LabManager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0">Datos y gráficos</h4>
+  <button class="btn btn-outline-secondary btn-sm" onclick="openExportModal()"><i class="bi bi-download me-1"></i> Exportar CSV</button>
+</div>
+
+<div class="card stat-card mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Experimento</label>
+        <select id="fExperiment" class="form-select form-select-sm"></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Sensor</label>
+        <select id="fSensor" class="form-select form-select-sm"><option value="">Todos</option></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Período</label>
+        <select id="fRange" class="form-select form-select-sm">
+          <option value="15m">Últimos 15 minutos</option>
+          <option value="1h">Última hora</option>
+          <option value="24h">Últimas 24 h</option>
+          <option value="7d">Últimos 7 días</option>
+          <option value="30d">Últimos 30 días</option>
+          <option value="all" selected>Todo</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card stat-card mb-3">
+  <div class="card-body">
+    <div class="chart-box">
+      <canvas id="dataChart"></canvas>
+    </div>
+    <div id="dataEmpty" class="text-center text-muted p-4">
+      <i class="bi bi-funnel fs-1 d-block mb-2"></i>
+      Seleccioná algún filtro para comenzar a visualizar los datos.
+    </div>
+  </div>
+</div>
+
+<div class="card stat-card">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-table me-2"></i>Lecturas (últimas 20 por sensor)</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 table-stack">
+        <thead class="table-light">
+          <tr>
+            <th>Hora</th>
+            <th>Sensor</th>
+            <th class="text-end">Valor</th>
+            <th>Unidad</th>
+          </tr>
+        </thead>
+        <tbody id="dataTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-download me-2"></i>Exportar CSV</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small">La exportación respeta los filtros del gráfico. Podés ajustarlos antes de exportar.</p>
+        <div class="row g-2 mb-3">
+          <div class="col-12">
+            <label class="form-label small text-muted">Experimento</label>
+            <select id="expExperiment" class="form-select form-select-sm"></select>
+          </div>
+          <div class="col-12">
+            <label class="form-label small text-muted">Sensor</label>
+            <select id="expSensor" class="form-select form-select-sm"><option value="">Todos</option></select>
+          </div>
+          <div class="col-12">
+            <label class="form-label small text-muted">Período</label>
+            <select id="expRange" class="form-select form-select-sm">
+              <option value="15m">Últimos 15 minutos</option>
+              <option value="1h">Última hora</option>
+              <option value="24h">Últimas 24 h</option>
+              <option value="7d">Últimos 7 días</option>
+              <option value="30d">Últimos 30 días</option>
+              <option value="all" selected>Todo</option>
+            </select>
+          </div>
+        </div>
+        <label class="form-label small text-muted">Columnas a exportar</label>
+        <div class="d-flex flex-wrap gap-3 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="experimento" id="colExperimento" checked>
+            <label class="form-check-label" for="colExperimento">Experimento</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="tiempo" id="colTiempo" checked>
+            <label class="form-check-label" for="colTiempo">Tiempo</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="sensor" id="colSensor" checked>
+            <label class="form-check-label" for="colSensor">Sensor</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="unidad" id="colUnidad" checked>
+            <label class="form-check-label" for="colUnidad">Unidad</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="valor" id="colValor" checked>
+            <label class="form-check-label" for="colValor">Valor</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="exportCsv()"><i class="bi bi-download me-1"></i> Exportar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/chart.umd.min.js"></script>
+<script>
+let meta = { experiments: [] };
+let ws = null;
+let wsRetry = null;
+let reloadTimer = null;
+let hasSearched = false;
+
+function selectedExperiment() {
+  const exp = document.getElementById("fExperiment").value;
+  return meta.experiments.find(x => String(x.id) === exp) || null;
+}
+
+function experimentWindowMs() {
+  const e = selectedExperiment();
+  if (!e) return null;
+  if (e.start === null && e.end === null) return null;
+  return { from: e.start, to: e.end };
+}
+
+function currentFromMs() {
+  const range = document.getElementById("fRange").value;
+  if (range === "all") return 0;
+  const min = { "15m": 15, "1h": 60, "24h": 1440, "7d": 10080, "30d": 43200 }[range];
+  return Date.now() - min * 60 * 1000;
+}
+
+function currentParams() {
+  const p = {};
+  const exp = document.getElementById("fExperiment").value;
+  const sen = document.getElementById("fSensor").value;
+  if (exp) p.experiment_id = exp;
+  if (sen) p.sensor_id = sen;
+  const range = document.getElementById("fRange").value;
+  if (range === "all") {
+    p.from = "";
+  } else {
+    const min = { "15m": 15, "1h": 60, "24h": 1440, "7d": 10080, "30d": 43200 }[range];
+    p.from = new Date(Date.now() - min * 60 * 1000).toISOString();
+  }
+  return p;
+}
+
+function selectedSensorIds() {
+  const exp = document.getElementById("fExperiment").value;
+  const sen = document.getElementById("fSensor").value;
+  if (sen) return new Set([sen]);
+  if (exp) {
+    const e = meta.experiments.find(x => String(x.id) === exp);
+    return new Set(e ? e.sensors.map(s => String(s.id)) : []);
+  }
+  return new Set(meta.experiments.flatMap(e => e.sensors.map(s => String(s.id))));
+}
+
+function registrySeries() {
+  return Object.values(window.__lmSeries || {});
+}
+
+function scheduleReload() {
+  if (reloadTimer) return;
+  reloadTimer = setTimeout(() => {
+    reloadTimer = null;
+    loadData();
+  }, 800);
+}
+
+function handleRealtimeMessage(ev) {
+  if (!hasSearched) return;
+  if (!ev || !ev.sensor_id) return;
+  if (ev.time < currentFromMs()) return;
+  const expWin = experimentWindowMs();
+  if (expWin) {
+    if (expWin.from !== null && ev.time < expWin.from) return;
+    if (expWin.to !== null && ev.time > expWin.to) return;
+  }
+  if (!selectedSensorIds().has(String(ev.sensor_id))) return;
+  const entry = (window.__lmSeries || {})[ev.sensor_id];
+  if (!entry) {
+    scheduleReload();
+    return;
+  }
+  entry.points.push([ev.time, ev.value]);
+  entry.dataset.data.push({ x: ev.time, y: ev.value });
+  const maxPoints = 1500;
+  if (entry.points.length > maxPoints) {
+    entry.points.splice(0, entry.points.length - maxPoints);
+    entry.dataset.data.splice(0, entry.dataset.data.length - maxPoints);
+  }
+  if (window.__lmRangeDatasets && window.__lmRangeDatasets.length) {
+    const maxX = entry.points[entry.points.length - 1][0];
+    window.__lmRangeDatasets.forEach(ds => { ds.data[1].x = maxX; });
+  }
+  const chart = window.__lmChart;
+  if (chart) chart.update("none");
+  renderTable(registrySeries());
+}
+
+function connectRealtime() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws/data`);
+  ws.onmessage = e => {
+    let ev;
+    try {
+      ev = JSON.parse(e.data);
+    } catch (err) {
+      return;
+    }
+    handleRealtimeMessage(ev);
+  };
+  ws.onclose = () => {
+    if (!document.hidden && wsRetry === null) {
+      wsRetry = setTimeout(() => {
+        wsRetry = null;
+        connectRealtime();
+      }, 3000);
+    }
+  };
+}
+
+function populateFilters() {
+  const expSel = document.getElementById("fExperiment");
+  expSel.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Todos";
+  expSel.appendChild(placeholder);
+  meta.experiments.forEach(e => {
+    const o = document.createElement("option");
+    o.value = e.id;
+    o.textContent = e.name;
+    expSel.appendChild(o);
+  });
+  populateSensorSelect(allExperimentSensors());
+}
+
+function allExperimentSensors() {
+  const unique = new Map();
+  meta.experiments.forEach(e => {
+    e.sensors.forEach(s => {
+      if (!unique.has(s.id)) unique.set(s.id, s);
+    });
+  });
+  return Array.from(unique.values());
+}
+
+function populateSensorSelect(sensors) {
+  const senSel = document.getElementById("fSensor");
+  senSel.innerHTML = '<option value="">Todos</option>';
+  sensors.forEach(s => {
+    const o = document.createElement("option");
+    o.value = s.id;
+    o.textContent = s.name + (s.unit ? ` (${s.unit})` : "");
+    senSel.appendChild(o);
+  });
+}
+
+function onExperimentChange() {
+  const expSel = document.getElementById("fExperiment");
+  const e = meta.experiments.find(x => String(x.id) === expSel.value);
+  if (e) {
+    populateSensorSelect(e.sensors);
+  } else {
+    populateSensorSelect(allExperimentSensors());
+  }
+  clearView();
+  loadData();
+}
+
+function clearView() {
+  hasSearched = false;
+  window.__lmSeries = {};
+  window.__lmRangeDatasets = null;
+  window.__lmChart = null;
+  const canvas = document.getElementById("dataChart");
+  if (canvas) {
+    const chart = Chart.getChart(canvas);
+    if (chart) chart.destroy();
+  }
+  const empty = document.getElementById("dataEmpty");
+  if (empty) {
+    empty.innerHTML = '<i class="bi bi-funnel fs-1 d-block mb-2"></i>' +
+      'Seleccioná algún filtro para comenzar a visualizar los datos.';
+  }
+  const tbody = document.getElementById("dataTable");
+  if (tbody) tbody.innerHTML = "";
+}
+
+function renderTable(series) {
+  const tbody = document.getElementById("dataTable");
+  tbody.innerHTML = "";
+  series.forEach(s => {
+    const rows = s.points.slice(-20).reverse();
+    rows.forEach((p) => {
+      const tr = document.createElement("tr");
+      let valueTxt = p[1];
+      const outOfRange = (s.min_value !== null && p[1] < s.min_value) ||
+                         (s.max_value !== null && p[1] > s.max_value);
+      if (s.type === "bool") {
+        valueTxt = p[1] === 1.0
+          ? '<span class="badge bg-success">Sí</span>'
+          : '<span class="badge bg-secondary">No</span>';
+      } else if (outOfRange) {
+        valueTxt = `<span class="text-danger fw-bold">${p[1]}</span>`;
+      }
+      tr.innerHTML = `
+        <td class="text-muted small" data-label="Hora">${fmtTime(p[0])}</td>
+        <td data-label="Sensor"><code>${s.label}</code></td>
+        <td class="text-end fw-semibold" data-label="Valor">${valueTxt}</td>
+        <td data-label="Unidad">${s.unit}</td>`;
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+async function loadData() {
+  try {
+    hasSearched = true;
+    const data = await apiData(currentParams());
+    const empty = document.getElementById("dataEmpty");
+    if (data.total === 0 && empty) {
+      empty.innerHTML = '<i class="bi bi-inbox fs-1 d-block mb-2"></i>Sin datos para los filtros seleccionados';
+    }
+    buildLineChart("dataChart", data.series, "dataEmpty", {
+      alertRanges: !!document.getElementById("fSensor").value,
+    });
+    renderTable(data.series);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function openExportModal() {
+  const expSel = document.getElementById("expExperiment");
+  expSel.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Todos";
+  expSel.appendChild(placeholder);
+  meta.experiments.forEach(e => {
+    const o = document.createElement("option");
+    o.value = e.id;
+    o.textContent = e.name;
+    expSel.appendChild(o);
+  });
+  expSel.value = document.getElementById("fExperiment").value;
+  onExportExperimentChange();
+  const senSel = document.getElementById("expSensor");
+  senSel.value = document.getElementById("fSensor").value;
+  document.getElementById("expRange").value = document.getElementById("fRange").value;
+  ["colExperimento", "colTiempo", "colSensor", "colUnidad", "colValor"].forEach(
+    id => document.getElementById(id).checked = true
+  );
+  new bootstrap.Modal(document.getElementById("exportModal")).show();
+}
+
+function onExportExperimentChange() {
+  const expSel = document.getElementById("expExperiment");
+  const e = meta.experiments.find(x => String(x.id) === expSel.value);
+  if (e) {
+    fillExportSensors(e.sensors);
+  } else {
+    fillExportSensors(allExperimentSensors());
+  }
+}
+
+function fillExportSensors(sensors) {
+  const senSel = document.getElementById("expSensor");
+  senSel.innerHTML = '<option value="">Todos</option>';
+  sensors.forEach(s => {
+    const o = document.createElement("option");
+    o.value = s.id;
+    o.textContent = s.name + (s.unit ? ` (${s.unit})` : "");
+    senSel.appendChild(o);
+  });
+}
+
+function exportParams() {
+  const p = {};
+  const exp = document.getElementById("expExperiment").value;
+  const sen = document.getElementById("expSensor").value;
+  if (exp) p.experiment_id = exp;
+  if (sen) p.sensor_id = sen;
+  const range = document.getElementById("expRange").value;
+  if (range === "all") {
+    p.from = "";
+  } else {
+    const min = { "15m": 15, "1h": 60, "24h": 1440, "7d": 10080, "30d": 43200 }[range];
+    p.from = new Date(Date.now() - min * 60 * 1000).toISOString();
+  }
+  const cols = [];
+  ["colExperimento", "colTiempo", "colSensor", "colUnidad", "colValor"].forEach(id => {
+    if (document.getElementById(id).checked) cols.push(document.getElementById(id).value);
+  });
+  p.columns = cols.length ? cols.join(",") : "experimento,tiempo,sensor,unidad,valor";
+  return p;
+}
+
+function exportCsv() {
+  const p = exportParams();
+  const q = new URLSearchParams(p);
+  const modal = bootstrap.Modal.getInstance(document.getElementById("exportModal"));
+  if (modal) modal.hide();
+  window.location.href = "/api/data/csv?" + q.toString();
+}
+
+document.addEventListener("DOMContentLoaded", async function () {
+  const res = await fetch("/api/meta");
+  meta = await res.json();
+  populateFilters();
+  document.getElementById("fExperiment").addEventListener("change", onExperimentChange);
+  document.getElementById("fSensor").addEventListener("change", function () {
+    clearView();
+    loadData();
+  });
+  document.getElementById("fRange").addEventListener("change", function () {
+    clearView();
+    loadData();
+  });
+  connectRealtime();
+});
+</script>
+{% endblock %}

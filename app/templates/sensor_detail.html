@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}{{ sensor.name }} - LabManager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <a href="/sensores" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Sensores</a>
+    <h4 class="mb-0 mt-1">{{ sensor.name }}{% if sensor.unit %} ({{ sensor.unit|usym }}){% endif %}
+      {% if sensor.is_active %}<span class="badge bg-success align-middle ms-1">Activo</span>
+      {% else %}<span class="badge bg-secondary align-middle ms-1">Inactivo</span>{% endif %}
+    </h4>
+    {% if sensor.description %}<p class="text-muted mb-0">{{ sensor.description }}</p>{% endif %}
+  </div>
+  {% if user and user.role != 'lector' %}
+  <div class="d-flex gap-2">
+    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditar">
+      <i class="bi bi-pencil"></i><span class="d-none d-sm-inline ms-1">Editar</span>
+    </button>
+    <form method="post" action="/sensores/{{ sensor.id }}/toggle" class="d-inline">
+      <button class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-toggle-{% if sensor.is_active %}on{% else %}off{% endif %}"></i>
+        <span class="d-none d-sm-inline ms-1">{% if sensor.is_active %}Desactivar{% else %}Activar{% endif %}</span>
+      </button>
+    </form>
+    <form method="post" action="/sensores/{{ sensor.id }}/eliminar"
+          data-confirm="¿Eliminar el sensor «{{ sensor.name }}» y todos sus datos?">
+      <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6 col-lg-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="text-muted small">Topic MQTT</div>
+        <div class="fw-semibold"><code>{{ sensor.mqtt_topic }}</code></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="text-muted small">Última medición</div>
+        <div class="fw-bold fs-5 {% if sensor.min_value is not none and sensor.last_value is not none and sensor.last_value < sensor.min_value %}text-danger{% elif sensor.max_value is not none and sensor.last_value is not none and sensor.last_value > sensor.max_value %}text-danger{% endif %}">
+          {% if sensor.last_value is not none %}
+          {{ sensor.last_value }}{% if sensor.unit %} {{ sensor.unit|usym }}{% endif %}
+          {% else %}—{% endif %}
+        </div>
+        <div class="small text-muted">{{ sensor.last_time|dth if sensor.last_time else 'Sin datos aún' }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="text-muted small">Rango</div>
+        <div class="fw-semibold">
+          {{ sensor.min_value if sensor.min_value is not none else '∞' }} – {{ sensor.max_value if sensor.max_value is not none else '∞' }}
+          {% if sensor.unit %} {{ sensor.unit|usym }}{% endif %}
+        </div>
+        <div class="small text-muted">Límites de alerta</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="text-muted small">Creado</div>
+        <div class="fw-semibold">{{ sensor.created_at|dth }}</div>
+        <div class="small text-muted">Unidad: {{ sensor.unit|usym if sensor.unit else 'Sin unidad' }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card stat-card">
+  <div class="card-header bg-white"><i class="bi bi-thermometer-half me-2"></i>Experimentos asociados</div>
+  <div class="card-body p-0">
+    {% if experimentos %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 table-stack">
+        <thead class="table-light">
+          <tr>
+            <th>Experimento</th>
+            <th>Descripción</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in experimentos %}
+          <tr>
+            <td data-label="Experimento"><a href="/experimentos/{{ e.id }}" class="fw-semibold text-decoration-none">{{ e.name }}</a></td>
+            <td data-label="Descripción" class="text-muted small">{{ e.description or '-' }}</td>
+            <td data-label="Inicio" class="text-muted small">{{ e.start_time|dth if e.start_time else '-' }}</td>
+            <td data-label="Fin" class="text-muted small">{{ e.end_time|dth if e.end_time else '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted p-4">
+      <i class="bi bi-inbox d-block fs-3 mb-1"></i>
+      Este sensor no está asociado a ningún experimento.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if user and user.role != 'lector' %}
+<div class="modal fade" id="modalEditar" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" action="/sensores/{{ sensor.id }}/editar" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar sensor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nombre</label>
+            <input class="form-control" name="name" required value="{{ sensor.name }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Topic MQTT (fuente)</label>
+            <input class="form-control" name="mqtt_topic" required value="{{ sensor.mqtt_topic }}">
+          </div>
+        </div>
+        <div class="mb-3 mt-3">
+          <label class="form-label">Descripción</label>
+          <input class="form-control" name="description" value="{{ sensor.description }}">
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Unidad</label>
+            <select class="form-select" name="unit_id">
+              <option value="">— Sin unidad —</option>
+              {% for u in unidades %}
+              <option value="{{ u.id }}" {% if sensor.unit_id == u.id %}selected{% endif %}>{{ u.symbol or u.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tipo de dato</label>
+            <select class="form-select" name="data_type">
+              <option value="float" {% if sensor.data_type == 'float' %}selected{% endif %}>float</option>
+              <option value="bool" {% if sensor.data_type == 'bool' %}selected{% endif %}>bool</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-3 mt-1">
+          <div class="col-md-6">
+            <label class="form-label">Rango mínimo</label>
+            <input class="form-control" name="min_value" type="number" step="any"
+                   value="{{ sensor.min_value if sensor.min_value is not none else '' }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Rango máximo</label>
+            <input class="form-control" name="max_value" type="number" step="any"
+                   value="{{ sensor.max_value if sensor.max_value is not none else '' }}">
+          </div>
+        </div>
+        <p class="small text-muted mt-3 mb-0">Las mediciones fuera del rango se marcarán en rojo como alerta.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}LabManager{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/css/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/static/css/custom.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="d-flex" id="wrapper">
+  <aside class="sidebar" id="sidebar">
+    <a href="/" class="brand"><i class="bi bi-droplet-half"></i> LabManager</a>
+    <nav>
+      <a href="/" class="{{ 'active' if request.url.path == '/' }}"><i class="bi bi-speedometer2"></i> Inicio</a>
+      <a href="/datos" class="{{ 'active' if request.url.path == '/datos' }}"><i class="bi bi-graph-up"></i> Datos y gráficos</a>
+      <a href="/experimentos" class="{{ 'active' if request.url.path.startswith('/experimentos') }}"><i class="bi bi-thermometer-half"></i> Experimentos</a>
+      <a href="/sensores" class="{{ 'active' if request.url.path.startswith('/sensores') }}"><i class="bi bi-activity"></i> Sensores</a>
+      <a href="/unidades" class="{{ 'active' if request.url.path.startswith('/unidades') }}"><i class="bi bi-rulers"></i> Unidades</a>
+      {% if user and user.role == 'admin' %}
+      <a href="/usuarios" class="{{ 'active' if request.url.path == '/usuarios' }}"><i class="bi bi-people"></i> Usuarios</a>
+      <a href="/configuracion" class="{{ 'active' if request.url.path == '/configuracion' }}"><i class="bi bi-gear"></i> Configuración</a>
+      {% endif %}
+    </nav>
+    {% if user %}
+    <div class="sidebar-footer">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-person-circle fs-4"></i>
+        <div>
+          <div class="fw-semibold text-white">{{ user.username }}</div>
+          <div class="small opacity-75">{{ role_label }}</div>
+        </div>
+      </div>
+      <a href="/logout" class="btn btn-sm btn-outline-light w-100"><i class="bi bi-box-arrow-right"></i> Salir</a>
+    </div>
+    {% endif %}
+  </aside>
+  <main class="content">
+    <div class="mobile-topbar">
+      <button id="sidebarToggle" class="btn btn-light btn-sm" type="button" aria-label="Abrir menú">
+        <i class="bi bi-list fs-5"></i>
+      </button>
+      <span class="fw-bold"><i class="bi bi-droplet-half text-primary"></i> LabManager</span>
+    </div>
+    {% set msg = request.query_params.get('msg') %}
+    {% set err = request.query_params.get('error') %}
+    {% if msg %}<div class="alert alert-success alert-dismissible fade show" role="alert">{{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+    {% if err %}<div class="alert alert-danger alert-dismissible fade show" role="alert">{{ err }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar acción</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="confirmBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="confirmOk">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>window.LM_TZ = "{{ tz_name }}";</script>
+<script src="/static/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/app.js?v=8"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".content .alert").forEach(function (el) {
+    setTimeout(function () { el.classList.add("d-none"); }, 10000);
+  });
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

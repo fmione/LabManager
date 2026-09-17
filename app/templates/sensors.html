@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Sensores - LabManager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0">Sensores</h4>
+  {% if user and user.role != 'lector' %}
+  <button class="btn btn-primary btn-plus" data-bs-toggle="modal" data-bs-target="#modalNuevoSensor">
+    <i class="bi bi-plus-lg me-1"></i><span class="d-none d-sm-inline ms-1">Nuevo sensor</span>
+  </button>
+  {% endif %}
+</div>
+
+{% if sensores %}
+<div class="row g-3">
+  {% for s in sensores %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <a href="/sensores/{{ s.id }}" class="text-decoration-none">
+              <span class="fs-6 fw-semibold">{{ s.name }}{% if s.unit %} ({{ s.unit|usym }}){% endif %}</span>
+            </a>
+            <div class="small text-muted">
+              <code>{{ s.mqtt_topic }}</code>
+            </div>
+          </div>
+          {% if user and user.role != 'lector' %}
+          <form method="post" action="/sensores/{{ s.id }}/eliminar"
+                data-confirm="¿Eliminar el sensor «{{ s.name }}» y sus datos?">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+          {% endif %}
+        </div>
+        {% if s.description %}<p class="small text-muted">{{ s.description }}</p>{% endif %}
+        <div class="mb-2">
+          <span class="badge {% if s.is_active %}bg-success{% else %}bg-secondary{% endif %} me-1">
+            {% if s.is_active %}Activo{% else %}Inactivo{% endif %}
+          </span>
+          {% if s.min_value is not none or s.max_value is not none %}
+          <span class="badge bg-light text-dark border me-1">
+            Rango: {{ s.min_value if s.min_value is not none else '∞' }} – {{ s.max_value if s.max_value is not none else '∞' }}
+          </span>
+          {% endif %}
+        </div>
+        <div class="small text-muted">
+          Última medición:
+          {% if s.last_value is not none %}
+          <strong>{{ s.last_value }}</strong>{% if s.unit %} {{ s.unit|usym }}{% endif %}
+          <span class="text-muted">{{ s.last_time|dth if s.last_time else '' }}</span>
+          {% else %}
+          — sin datos
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted p-4">
+  <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+  No hay sensores todavía.
+  {% if user and user.role != 'lector' %}Creá el primero con el botón de arriba.{% endif %}
+</div>
+{% endif %}
+
+{% if user and user.role != 'lector' %}
+<div class="modal fade" id="modalNuevoSensor" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" action="/sensores/crear" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nuevo sensor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nombre</label>
+            <input class="form-control" name="name" required placeholder="ej: reactor1">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Topic MQTT (fuente)</label>
+            <input class="form-control" name="mqtt_topic" required placeholder="sensor/temperatura">
+          </div>
+        </div>
+        <div class="mb-3 mt-3">
+          <label class="form-label">Descripción (opcional)</label>
+          <input class="form-control" name="description" placeholder="ej: temperatura del reactor 1">
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Unidad</label>
+            <select class="form-select" name="unit_id">
+              <option value="">— Sin unidad —</option>
+              {% for u in unidades %}
+              <option value="{{ u.id }}">{{ u.symbol or u.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tipo de dato</label>
+            <select class="form-select" name="data_type">
+              <option value="float">float</option>
+              <option value="bool">bool</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-3 mt-1">
+          <div class="col-md-6">
+            <label class="form-label">Rango mínimo</label>
+            <input class="form-control" name="min_value" type="number" step="any" placeholder="opcional">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Rango máximo</label>
+            <input class="form-control" name="max_value" type="number" step="any" placeholder="opcional">
+          </div>
+        </div>
+        <p class="small text-muted mt-3 mb-0">Las mediciones fuera del rango se marcarán en rojo como alerta. Los datos llegan por MQTT al topic configurado.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary">Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

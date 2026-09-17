@@ -1,0 +1,258 @@
+:root {
+  --sidebar-w: 250px;
+  --sidebar-bg: #0f172a;
+  --sidebar-fg: #94a3b8;
+  --sidebar-hover: #1e293b;
+  --sidebar-active: #38bdf8;
+}
+
+body {
+  background: #f1f5f9;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+#wrapper {
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  color: var(--sidebar-fg);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.1rem 1.25rem;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.15rem;
+  text-decoration: none;
+  border-bottom: 1px solid #1e293b;
+}
+
+.sidebar .brand i {
+  color: var(--sidebar-active);
+}
+
+.sidebar nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1.25rem;
+  color: var(--sidebar-fg);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  font-size: 0.95rem;
+}
+
+.sidebar nav a:hover {
+  background: var(--sidebar-hover);
+  color: #fff;
+}
+
+.sidebar nav a.active {
+  background: var(--sidebar-hover);
+  color: #fff;
+  border-left-color: var(--sidebar-active);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #1e293b;
+}
+
+.content {
+  flex: 1;
+  padding: 1.5rem;
+  min-width: 0;
+}
+
+.stat-card {
+  border: none;
+  border-radius: 0.9rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.stat-card .icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.chart-box {
+  height: 340px;
+  position: relative;
+}
+
+.login-bg {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  border: none;
+  border-radius: 1rem;
+}
+
+.badge-role-admin { background: #ef4444; color: #fff; }
+.badge-role-investigador { background: #f59e0b; color: #fff; }
+.badge-role-lector { background: #64748b; color: #fff; }
+
+.mobile-topbar {
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  margin: -1.5rem -1.5rem 1.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  .mobile-topbar {
+    display: flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1040;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: none;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.45);
+  }
+
+  .sidebar-backdrop.show {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 1039;
+  }
+}
+
+@media (min-width: 992px) {
+  .mobile-topbar,
+  .sidebar-backdrop {
+    display: none;
+  }
+}
+
+.btn-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 575.98px) {
+  .btn-plus {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .btn-plus i {
+    margin: 0 !important;
+    font-size: 1.1rem;
+  }
+  .btn-plus.btn-sm {
+    width: 32px;
+    height: 32px;
+  }
+  .btn-plus.btn-sm i {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .card .table-responsive {
+    padding: 0.5rem;
+    overflow: visible;
+  }
+
+  .table-stack thead {
+    display: none;
+  }
+
+  .table-stack,
+  .table-stack tbody,
+  .table-stack tr,
+  .table-stack td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-stack tr {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.6rem;
+    margin-bottom: 0.6rem;
+    padding: 0.35rem 0.9rem;
+    background: #fff;
+  }
+
+  .table-stack td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.4rem 0;
+    border: 0;
+    text-align: right;
+    min-width: 0;
+  }
+
+  .table-stack td > * {
+    min-width: 0;
+  }
+
+  .table-stack td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #64748b;
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+  }
+
+  .table-stack td.actions-cell {
+    justify-content: flex-end;
+  }
+
+  .table-stack td.actions-cell::before {
+    content: none;
+  }
+}
+
+

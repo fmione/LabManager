@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}{{ exp.name }} - LabManager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <a href="/experimentos" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Experimentos</a>
+    <h4 class="mb-0 mt-1">{{ exp.name }}</h4>
+    {% if exp.description %}<p class="text-muted mb-0">{{ exp.description }}</p>{% endif %}
+    <div class="small text-muted">
+      {% if exp.start_time %}Inicio: {{ exp.start_time|dth }}{% endif %}
+      {% if exp.start_time and exp.end_time %} — {% endif %}
+      {% if exp.end_time %}Fin: {{ exp.end_time|dth }}{% endif %}
+      {% if not exp.start_time and not exp.end_time %}Sin fechas definidas{% endif %}
+    </div>
+  </div>
+  {% if user and user.role != 'lector' %}
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditarExp">
+      <i class="bi bi-pencil"></i><span class="d-none d-sm-inline ms-1">Editar</span>
+    </button>
+    <button class="btn btn-primary btn-plus btn-sm" data-bs-toggle="modal" data-bs-target="#modalAsociar">
+      <i class="bi bi-plus-lg me-1"></i><span class="d-none d-sm-inline ms-1">Asociar sensor</span>
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card stat-card">
+  <div class="card-header bg-white"><i class="bi bi-activity me-2"></i>Sensores asociados</div>
+  <div class="card-body p-0">
+    {% if exp.sensors %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 table-stack">
+        <thead class="table-light">
+          <tr>
+            <th>Sensor</th>
+            <th>Topic MQTT</th>
+            <th>Unidad</th>
+            <th>Estado</th>
+            <th class="text-end">Última medición</th>
+            {% if user and user.role != 'lector' %}<th></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in exp.sensors %}
+          <tr>
+            <td class="fw-semibold" data-label="Sensor">
+              <a href="/sensores/{{ s.id }}" class="text-decoration-none">{{ s.name }}{% if s.unit %} ({{ s.unit|usym }}){% endif %}</a>
+            </td>
+            <td data-label="Topic MQTT"><code>{{ s.mqtt_topic }}</code></td>
+            <td data-label="Unidad">{{ s.unit|usym if s.unit else '-' }}</td>
+            <td data-label="Estado">
+              {% if s.is_active %}<span class="badge bg-success">Activo</span>
+              {% else %}<span class="badge bg-secondary">Inactivo</span>{% endif %}
+            </td>
+            <td class="text-end" data-label="Última medición">
+              {% if s.last_value is not none %}
+              <span class="{% if s.min_value is not none and s.last_value < s.min_value %}text-danger fw-bold{% elif s.max_value is not none and s.last_value > s.max_value %}text-danger fw-bold{% endif %}">
+                {{ s.last_value }}
+              </span>
+              {% if s.unit %} {{ s.unit|usym }}{% endif %}
+              <span class="text-muted small d-block">{{ s.last_time|dth if s.last_time else '' }}</span>
+              {% else %}
+              —
+              {% endif %}
+            </td>
+            {% if user and user.role != 'lector' %}
+            <td class="text-end actions-cell">
+              <form method="post" action="/experimentos/{{ exp.id }}/desasociar/{{ s.id }}" class="d-inline">
+                <button class="btn btn-sm btn-outline-warning" title="Desasociar del experimento">
+                  <i class="bi bi-link-45deg"></i>
+                </button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted p-4">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+      Este experimento no tiene sensores asociados.
+      {% if user and user.role != 'lector' %}Usá el botón de arriba para vincular uno.{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card stat-card mt-4">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-journal-text me-2"></i>Notas</span>
+    {% if user and user.role != 'lector' %}
+    <button class="btn btn-primary btn-plus btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaNota">
+      <i class="bi bi-plus-lg me-1"></i><span class="d-none d-sm-inline ms-1">Nueva nota</span>
+    </button>
+    {% endif %}
+  </div>
+  <div class="card-body p-0">
+    {% if exp.notes %}
+    {% for n in exp.notes %}
+    <div class="border-bottom px-3 py-3">
+      <p class="mb-1" style="white-space: pre-wrap;">{{ n.description }}</p>
+      {% if n.images %}
+      <div class="d-flex flex-wrap gap-2 mb-2">
+        {% for img in n.images %}
+        <a href="/notas/{{ img.id }}/imagen" target="_blank" title="{{ img.filename }}">
+          <img src="/notas/{{ img.id }}/imagen" alt="{{ img.filename }}"
+               class="img-thumbnail" style="width: 96px; height: 96px; object-fit: cover;">
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="small text-muted d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span>
+          <i class="bi bi-person me-1"></i>{{ n.user.username if n.user else '—' }}
+          <i class="bi bi-clock ms-2 me-1"></i>{{ n.created_at|dth }}
+        </span>
+        {% if user and (user.role == 'admin' or n.user_id == user.uid) %}
+        <span class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-primary" title="Editar nota"
+                  data-bs-toggle="modal" data-bs-target="#modalEditarNota{{ n.id }}">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <form method="post" action="/notas/{{ n.id }}/eliminar" data-confirm="¿Eliminar esta nota?" class="d-inline">
+            <button class="btn btn-sm btn-outline-danger" title="Eliminar nota">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="text-center text-muted p-4">
+      <i class="bi bi-journal-text fs-1 d-block mb-2"></i>
+      Este experimento no tiene notas todavía.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if user and user.role != 'lector' %}
+
+<div class="modal fade" id="modalNuevaNota" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" action="/experimentos/{{ exp.id }}/notas/crear"
+          enctype="multipart/form-data" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nueva nota en {{ exp.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Descripción</label>
+          <textarea class="form-control" name="description" rows="4" required></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Imágenes (hasta 3 &mdash; máx. 2 MB cada una &mdash; JPG, PNG, WEBP o GIF)</label>
+          <div class="note-img-picker">
+            <div class="note-img-previews d-flex flex-wrap gap-2 mb-2"></div>
+            <div class="note-img-select">
+              <input type="file" class="form-control note-img-input" name="images"
+                     accept=".jpg,.jpeg,.png,.webp,.gif">
+            </div>
+            <div class="form-text note-img-counter"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary">Guardar nota</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% for n in exp.notes %}
+<div class="modal fade" id="modalEditarNota{{ n.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" action="/notas/{{ n.id }}/editar"
+          enctype="multipart/form-data" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar nota</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Descripción</label>
+          <textarea class="form-control" name="description" rows="3" required>{{ n.description }}</textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Imágenes (hasta 3 &mdash; máx. 2 MB cada una &mdash; JPG, PNG, WEBP o GIF)</label>
+          <div class="note-img-picker">
+            <div class="note-img-previews d-flex flex-wrap gap-2 mb-2">
+              {% for img in n.images %}
+              <div class="note-remove-img position-relative d-inline-block">
+                <img src="/notas/{{ img.id }}/imagen" alt="{{ img.filename }}"
+                     class="img-thumbnail d-block" style="width: 80px; height: 80px; object-fit: cover;">
+                <input type="checkbox" name="remove_images" value="{{ img.id }}" class="d-none">
+                <button type="button" class="btn btn-danger note-remove-img-x position-absolute"
+                        style="top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; line-height: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center;"
+                        title="Quitar imagen" aria-label="Quitar {{ img.filename }}">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+                <span class="d-block small text-muted text-center" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ img.filename }}">{{ img.filename }}</span>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="note-img-select">
+              <input type="file" class="form-control note-img-input" name="images"
+                     accept=".jpg,.jpeg,.png,.webp,.gif">
+            </div>
+            <div class="form-text note-img-counter"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+
+<div class="modal fade" id="modalEditarExp" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" action="/experimentos/{{ exp.id }}/editar" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar experimento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Nombre</label>
+          <input class="form-control" name="name" required value="{{ exp.name }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Descripción</label>
+          <textarea class="form-control" name="description" rows="2">{{ exp.description }}</textarea>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Fecha/hora inicio</label>
+            <input class="form-control" type="datetime-local" name="start_time"
+                   value="{{ exp.start_time|dtlocal }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Fecha/hora fin</label>
+            <input class="form-control" type="datetime-local" name="end_time"
+                   value="{{ exp.end_time|dtlocal }}">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="modalAsociar" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" action="/experimentos/{{ exp.id }}/asociar" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Asociar sensor a {{ exp.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Seleccionar sensor</label>
+          {% set associated_ids = exp.sensors | map(attribute='id') | list %}
+          <select class="form-select" name="sensor_id" required>
+            {% set has_available = {'val': false} %}
+            {% for s in all_sensors %}
+            {% if s.id not in associated_ids %}
+            {% if has_available.update({'val': true}) %}{% endif %}
+            <option value="{{ s.id }}">{{ s.name }} — {{ s.mqtt_topic }}{% if s.unit %} ({{ s.unit|usym }}){% endif %}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+          {% if not has_available.val %}
+          <div class="form-text text-muted">Todos los sensores ya están asociados a este experimento.</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" {% if not has_available.val %}disabled{% endif %}>Asociar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
